@@ -89,6 +89,7 @@ def main():
             s.lossAV.FC = nn.Sequential(nn.Linear(256, 128), nn.ReLU(), nn.Dropout(0.3), nn.Linear(128, 64), nn.ReLU(), nn.Dropout(0.3), nn.Linear(64, 2))
             s.lossA.FC = nn.Sequential(nn.Linear(128, 64), nn.ReLU(), nn.Dropout(0.3), nn.Linear(64, 2))
             s.lossV.FC = nn.Sequential(nn.Linear(128, 64), nn.ReLU(), nn.Dropout(0.3), nn.Linear(64, 2))
+            epoch = 1
         s = s.to(s.device)
     else:
         modelfiles = glob.glob('%s/model_0*.model'%args.modelSavePath)
