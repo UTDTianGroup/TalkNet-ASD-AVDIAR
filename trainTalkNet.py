@@ -27,7 +27,7 @@ def main():
     parser.add_argument('--evaluation',      dest='evaluation', action='store_true', help='Only do evaluation by using pretrained model [pretrain_AVA.model]')
     parser.add_argument('--use_avdiar',      action='store_true', help='Train/test with avdiar data.')
     parser.add_argument('--finetune',      action='store_true', help="Finetune with TalkNet's pretrained weights.")
-    parser.add_argument('--detector_arch', type=int, default=0, help='Choose the detector architecture. 0: use the architecture and the weights of the original model. 1: Use the architecture of the original model, but reinitialize weights. 2: Add a second hidden layer in the ')
+    parser.add_argument('--detector_arch', type=int, default=0, help='Choose the detector architecture. 0: default architecture. 1: Modified architecture.')
     parser.add_argument('--finetuned_model_path', type=str, default='Path not specified', help='Path to the saved model after finetuning')
 
     args = parser.parse_args()
@@ -53,10 +53,6 @@ def main():
     if args.evaluation == True:
         if args.finetune:
             s = talkNet(**vars(args))
-            if args.detector_arch == 2:
-                s.lossAV.FC = nn.Sequential(nn.Linear(256, 128), nn.ReLU(), nn.Dropout(0.3), nn.Linear(128, 64), nn.ReLU(), nn.Dropout(0.3), nn.Linear(64, 2))
-                s.lossA.FC = nn.Sequential(nn.Linear(128, 64), nn.ReLU(), nn.Dropout(0.3), nn.Linear(64, 2))
-                s.lossV.FC = nn.Sequential(nn.Linear(128, 64), nn.ReLU(), nn.Dropout(0.3), nn.Linear(64, 2))
             s.loadParameters(args.finetuned_model_path, map_location=torch.device(s.device))
             s = s.to(s.device)
             print("Model %s loaded from previous state!"%(args.finetuned_model_path))
@@ -80,15 +76,7 @@ def main():
                 param.requires_grad = False
         if args.detector_arch == 0:
             epoch = 14 # estimated epoch of pretrain_AVA.model
-        elif args.detector_arch == 1:
-            s.lossAV.FC = nn.Linear(256, 2)
-            s.lossA.FC = nn.Linear(128,2)
-            s.lossV.FC = nn.Linear(128,2)
-            epoch = 1
-        elif args.detector_arch == 2:
-            s.lossAV.FC = nn.Sequential(nn.Linear(256, 128), nn.ReLU(), nn.Dropout(0.3), nn.Linear(128, 64), nn.ReLU(), nn.Dropout(0.3), nn.Linear(64, 2))
-            s.lossA.FC = nn.Sequential(nn.Linear(128, 64), nn.ReLU(), nn.Dropout(0.3), nn.Linear(64, 2))
-            s.lossV.FC = nn.Sequential(nn.Linear(128, 64), nn.ReLU(), nn.Dropout(0.3), nn.Linear(64, 2))
+        else:
             epoch = 1
         s = s.to(s.device)
     else:

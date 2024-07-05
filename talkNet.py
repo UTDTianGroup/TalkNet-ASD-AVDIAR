@@ -8,7 +8,7 @@ from loss import lossAV, lossA, lossV
 from model.talkNetModel import talkNetModel
 
 class talkNet(nn.Module):
-    def __init__(self, lr = 0.0001, lrDecay = 0.95, **kwargs):
+    def __init__(self, lr = 0.0001, lrDecay = 0.95, detector_arch=0, **kwargs):
         super(talkNet, self).__init__()
 
         if torch.cuda.is_available(): #Set device to either gpu or cpu based on the runtime environment. Prefer using CUDA/GPU when available.
@@ -20,6 +20,10 @@ class talkNet(nn.Module):
         self.lossAV = lossAV().to(self.device)
         self.lossA = lossA().to(self.device)
         self.lossV = lossV().to(self.device)
+        if detector_arch==1:
+            self.lossAV.FC = nn.Sequential(nn.Linear(256, 128), nn.ReLU(), nn.Dropout(0.3), nn.Linear(128, 64), nn.ReLU(), nn.Dropout(0.3), nn.Linear(64, 2))
+            self.lossA.FC = nn.Sequential(nn.Linear(128, 64), nn.ReLU(), nn.Dropout(0.3), nn.Linear(64, 2))
+            self.lossV.FC = nn.Sequential(nn.Linear(128, 64), nn.ReLU(), nn.Dropout(0.3), nn.Linear(64, 2))
         self.optim = torch.optim.Adam(self.parameters(), lr = lr)
         self.scheduler = torch.optim.lr_scheduler.StepLR(self.optim, step_size = 1, gamma=lrDecay)
         
