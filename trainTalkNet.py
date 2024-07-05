@@ -58,11 +58,13 @@ def main():
                 s.lossA.FC = nn.Sequential(nn.Linear(128, 64), nn.ReLU(), nn.Dropout(0.3), nn.Linear(64, 2))
                 s.lossV.FC = nn.Sequential(nn.Linear(128, 64), nn.ReLU(), nn.Dropout(0.3), nn.Linear(64, 2))
             s.loadParameters(args.finetuned_model_path, map_location=torch.device(s.device))
+            s = s.to(s.device)
             print("Model %s loaded from previous state!"%(args.finetuned_model_path))
         else:
             download_pretrain_model_AVA()
             s = talkNet(**vars(args))
             s.loadParameters('pretrain_AVA.model', map_location=torch.device(s.device))
+            s = s.to(s.device)
             print("Model %s loaded from previous state!"%('pretrain_AVA.model'))
         mAP = s.evaluate_network(loader = valLoader, **vars(args))
         print("mAP %2.2f%%"%(mAP))
@@ -87,6 +89,7 @@ def main():
             s.lossAV.FC = nn.Sequential(nn.Linear(256, 128), nn.ReLU(), nn.Dropout(0.3), nn.Linear(128, 64), nn.ReLU(), nn.Dropout(0.3), nn.Linear(64, 2))
             s.lossA.FC = nn.Sequential(nn.Linear(128, 64), nn.ReLU(), nn.Dropout(0.3), nn.Linear(64, 2))
             s.lossV.FC = nn.Sequential(nn.Linear(128, 64), nn.ReLU(), nn.Dropout(0.3), nn.Linear(64, 2))
+        s = s.to(s.device)
     else:
         modelfiles = glob.glob('%s/model_0*.model'%args.modelSavePath)
         modelfiles.sort()  
