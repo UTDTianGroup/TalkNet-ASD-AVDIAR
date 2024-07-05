@@ -21,9 +21,9 @@ class talkNet(nn.Module):
         self.lossA = lossA().to(self.device)
         self.lossV = lossV().to(self.device)
         if detector_arch==1:
-            self.lossAV.FC = nn.Sequential(nn.Linear(256, 128), nn.ReLU(), nn.Linear(128, 64), nn.ReLU(), nn.Linear(64, 2))
-            self.lossA.FC = nn.Sequential(nn.Linear(128, 64), nn.ReLU(), nn.Linear(64, 2))
-            self.lossV.FC = nn.Sequential(nn.Linear(128, 64), nn.ReLU(), nn.Linear(64, 2))
+            self.lossAV.FC = nn.Sequential(nn.Linear(256, 128), nn.ReLU(), nn.LayerNorm(128), nn.Linear(128, 64), nn.ReLU(), nn.LayerNorm(64), nn.Linear(64, 2))
+            self.lossA.FC = nn.Sequential(nn.Linear(128, 64), nn.ReLU(), nn.LayerNorm(64), nn.Linear(64, 2))
+            self.lossV.FC = nn.Sequential(nn.Linear(128, 64), nn.ReLU(), nn.LayerNorm(64), nn.Linear(64, 2))
         self.optim = torch.optim.Adam(self.parameters(), lr = lr)
         self.scheduler = torch.optim.lr_scheduler.StepLR(self.optim, step_size = 1, gamma=lrDecay)
         
