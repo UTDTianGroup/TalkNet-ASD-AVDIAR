@@ -24,6 +24,8 @@ def main():
     # For download dataset only, for evaluation only
     parser.add_argument('--downloadAVA',     dest='downloadAVA', action='store_true', help='Only download AVA dataset and do related preprocess')
     parser.add_argument('--evaluation',      dest='evaluation', action='store_true', help='Only do evaluation by using pretrained model [pretrain_AVA.model]')
+    parser.add_argument('--use_avdiar',      action='store_true', help='Train/test with avdiar data.')
+
     args = parser.parse_args()
     # Data loader
     args = init_args(args)
@@ -47,7 +49,7 @@ def main():
     if args.evaluation == True:
         download_pretrain_model_AVA()
         s = talkNet(**vars(args))
-        s.loadParameters('pretrain_AVA.model')
+        s.loadParameters('pretrain_AVA.model', map_location=torch.device(s.device))
         print("Model %s loaded from previous state!"%('pretrain_AVA.model'))
         mAP = s.evaluate_network(loader = valLoader, **vars(args))
         print("mAP %2.2f%%"%(mAP))
@@ -59,7 +61,7 @@ def main():
         print("Model %s loaded from previous state!"%modelfiles[-1])
         epoch = int(os.path.splitext(os.path.basename(modelfiles[-1]))[0][6:]) + 1
         s = talkNet(epoch = epoch, **vars(args))
-        s.loadParameters(modelfiles[-1])
+        s.loadParameters(modelfiles[-1], map_location=torch.device(s.device))
     else:
         epoch = 1
         s = talkNet(epoch = epoch, **vars(args))
