@@ -3,6 +3,7 @@ import time, os, torch, argparse, warnings, glob
 from dataLoader import train_loader, val_loader
 from utils.tools import *
 from talkNet import talkNet
+from torch import nn
 
 def main():
     # The structure of this code is learnt from https://github.com/clovaai/voxceleb_trainer
@@ -27,6 +28,7 @@ def main():
     parser.add_argument('--use_avdiar',      action='store_true', help='Train/test with avdiar data.')
     parser.add_argument('--finetune',      action='store_true', help="Finetune with TalkNet's pretrained weights.")
     parser.add_argument('--detector_arch', type=int, default=0, help='Choose the detector architecture. 0: use the architecture and the weights of the original model. 1: Use the architecture of the original model, but reinitialize weights. 2: Add a second hidden layer in the ')
+    parser.add_argument('--finetuned_model_path', type=str, default='Path not specified', help='Path to the saved model after finetuning')
 
     args = parser.parse_args()
     # Data loader
@@ -49,10 +51,19 @@ def main():
     valLoader = torch.utils.data.DataLoader(loader, batch_size = 1, shuffle = False, num_workers = 16)
 
     if args.evaluation == True:
-        download_pretrain_model_AVA()
-        s = talkNet(**vars(args))
-        s.loadParameters('pretrain_AVA.model', map_location=torch.device(s.device))
-        print("Model %s loaded from previous state!"%('pretrain_AVA.model'))
+        if args.finetune:
+            s = talkNet(**vars(args))
+            if args.detector_arch == 2:
+                s.lossAV.FC = nn.Sequential(nn.Linear(256, 128), nn.ReLU(), nn.Dropout(0.3), nn.Linear(128, 64), nn.ReLU(), nn.Dropout(0.3), nn.Linear(64, 2))
+                s.lossA.FC = nn.Sequential(nn.Linear(128, 64), nn.ReLU(), nn.Dropout(0.3), nn.Linear(64, 2))
+                s.lossV.FC = nn.Sequential(nn.Linear(128, 64), nn.ReLU(), nn.Dropout(0.3), nn.Linear(64, 2))
+            s.loadParameters(args.finetuned_model_path, map_location=torch.device(s.device))
+            print("Model %s loaded from previous state!"%(args.finetuned_model_path))
+        else:
+            download_pretrain_model_AVA()
+            s = talkNet(**vars(args))
+            s.loadParameters('pretrain_AVA.model', map_location=torch.device(s.device))
+            print("Model %s loaded from previous state!"%('pretrain_AVA.model'))
         mAP = s.evaluate_network(loader = valLoader, **vars(args))
         print("mAP %2.2f%%"%(mAP))
         quit()
@@ -65,8 +76,17 @@ def main():
             if 'FC' not in name:
                 print('parameter name: ', name)
                 param.requires_grad = False
-        
-        epoch = 14 # estimated epoch of pretrain_AVA.model
+        if args.detector_arch == 0:
+            epoch = 14 # estimated epoch of pretrain_AVA.model
+        elif args.detector_arch == 1:
+            s.lossAV.FC = nn.Linear(256, 2)
+            s.lossA.FC = nn.Linear(128,2)
+            s.lossV.FC = nn.Linear(128,2)
+            epoch = 1
+        elif args.detector_arch == 2:
+            s.lossAV.FC = nn.Sequential(nn.Linear(256, 128), nn.ReLU(), nn.Dropout(0.3), nn.Linear(128, 64), nn.ReLU(), nn.Dropout(0.3), nn.Linear(64, 2))
+            s.lossA.FC = nn.Sequential(nn.Linear(128, 64), nn.ReLU(), nn.Dropout(0.3), nn.Linear(64, 2))
+            s.lossV.FC = nn.Sequential(nn.Linear(128, 64), nn.ReLU(), nn.Dropout(0.3), nn.Linear(64, 2))
     else:
         modelfiles = glob.glob('%s/model_0*.model'%args.modelSavePath)
         modelfiles.sort()  
