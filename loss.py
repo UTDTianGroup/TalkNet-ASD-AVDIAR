@@ -11,7 +11,7 @@ class lossAV(nn.Module):
 	def forward(self, x, labels=None):	
 		x = x.squeeze(1)
 		x = self.FC(x)
-		x = torch.repeat_interleave(x, 25, dim=0)
+		# x = torch.repeat_interleave(x, 25, dim=0)
 		# print('av x shape: ', x.shape)
 		if labels == None:
 			predScore = x[:,1]
@@ -34,7 +34,7 @@ class lossA(nn.Module):
 	def forward(self, x, labels):	
 		x = x.squeeze(1)
 		x = self.FC(x)
-		x = torch.repeat_interleave(x, 25, dim=0)	
+		# x = torch.repeat_interleave(x, 25, dim=0)	
 		nloss = self.criterion(x, labels)
 		return nloss
 
@@ -48,7 +48,7 @@ class lossV(nn.Module):
 	def forward(self, x, labels):	
 		x = x.squeeze(1)
 		x = self.FC(x)
-		x = torch.repeat_interleave(x, 25, dim=0)
+		# x = torch.repeat_interleave(x, 25, dim=0)
 		nloss = self.criterion(x, labels)
 		return nloss
 
