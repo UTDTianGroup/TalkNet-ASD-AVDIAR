@@ -79,7 +79,7 @@ class talkNet(nn.Module):
         self.scheduler = torch.optim.lr_scheduler.StepLR(self.optim, step_size = 1, gamma=lrDecay)
 
         self.visual_avg_pool = nn.AvgPool2d((3,3))
-        self.audio_avg_pool = nn.AvgPool2d((3,2))
+        self.audio_avg_pool = nn.AvgPool2d((6,4))
         self.visual_avg_pool = self.visual_avg_pool.to(self.device)
         self.audio_avg_pool = self.audio_avg_pool.to(self.device)
 
@@ -97,9 +97,10 @@ class talkNet(nn.Module):
         self.transformer_encoder = nn.TransformerEncoder(encoder_layer=encoder_layer, num_layers=6)
         self.transformer_encoder = self.transformer_encoder.to(self.device)
 
-        self.audio_conv = [nn.Sequential(ConvBlock(512, 512, 3),nn.MaxPool2d(2), ConvBlock(512,512,3)) for i in range(25)]
+        #self.audio_conv = [nn.Sequential(ConvBlock(512, 512, 3),nn.MaxPool2d(2), ConvBlock(512,512,3)) for i in range(25)]
+        self.audio_conv = ConvBlock(512,512,3)
         self.visual_conv = ConvBlock(512, 512, 3)
-        self.audio_conv = [conv_layer.to(self.device) for conv_layer in self.audio_conv]
+        self.audio_conv = self.audio_conv.to(self.device)
         self.visual_conv = self.visual_conv.to(self.device)
         
         print(time.strftime("%m-%d %H:%M:%S") + " Model para number = %.2f"%(sum(param.numel() for param in self.model.parameters()) / 1024 / 1024))
@@ -133,17 +134,24 @@ class talkNet(nn.Module):
             # print('audio embed reshaped shape: ', audioEmbed_reshaped.shape)
             # print('visual embed reshaped shape: ', visualEmbed_reshaped.shape)
 
-            # audioEmbed_reshaped = self.audio_conv(audioEmbed_reshaped)
-            audioEmbed_lst = [self.audio_conv[i](audioEmbed_reshaped) for i in range(25)]
-            audioEmbed_reshaped = torch.cat(audioEmbed_lst, dim=-3)
+            audioEmbed_reshaped = self.audio_conv(audioEmbed_reshaped)
+            # audioEmbed_lst = [self.audio_conv[i](audioEmbed_reshaped) for i in range(25)]
+            # audioEmbed_reshaped = torch.cat(audioEmbed_lst, dim=-3)
             visualEmbed_reshaped = self.visual_conv(visualEmbed_reshaped)
 
-            audioEmbed_reshaped = self.audio_avg_pool(audioEmbed_reshaped)
+            audioEmbed_reshaped_avg = self.audio_avg_pool(audioEmbed_reshaped)
             visualEmbed_reshaped = self.visual_avg_pool(visualEmbed_reshaped)
             # print('audio embed reshaped shape after avg pool : ', audioEmbed_reshaped.shape)
             # print('visual embed reshaped shape after avg pool: ', visualEmbed_reshaped.shape)
 
-            audioEmbed_reshaped = self.audio_flatten(audioEmbed_reshaped)
+            audioEmbed_reshaped_flattened = self.audio_flatten(audioEmbed_reshaped_avg)
+            print(audioEmbed_reshaped.shape, audioEmbed_reshaped_flattened.shape)
+            audioEmbed_reshaped = torch.transpose(torch.transpose(audioEmbed_reshaped, 1,3), 1, 2)
+            print(audioEmbed_reshaped.shape)
+            audioEmbed_reshaped = torch.reshape(audioEmbed_reshaped, (B*T_a, 24, 512))
+            print(audioEmbed_reshaped.shape)
+            audioEmbed_reshaped = torch.cat([audioEmbed_reshaped, audioEmbed_reshaped_flattened.unsqueeze(1)], dim=1)
+            print(audioEmbed_reshaped.shape)
             visualEmbed_reshaped = self.visual_flatten(visualEmbed_reshaped)
             # print('audio embed reshaped shape after flatten : ', audioEmbed_reshaped.shape)
             # print('visual embed reshaped shape after flatten: ', visualEmbed_reshaped.shape)
@@ -156,9 +164,9 @@ class talkNet(nn.Module):
             # audioEmbed_reshaped = torch.repeat_interleave(audioEmbed_reshaped, 25, dim=0)
             # print('audio embed reshaped shape after repeat : ', audioEmbed_reshaped.shape)
 
-            audioEmbed = torch.reshape(audioEmbed_reshaped, (B, T_a, 512*25))
-            audioEmbed = torch.reshape(audioEmbed_reshaped, (B, T_a, 25, 512))
             audioEmbed = torch.reshape(audioEmbed_reshaped, (B, T_v, 512))
+            #audioEmbed = torch.reshape(audioEmbed_reshaped, (B, T_a, 25, 512))
+            #audioEmbed = torch.reshape(audioEmbed_reshaped, (B, T_v, 512))
             visualEmbed = torch.reshape(visualEmbed_reshaped, (B, T_v, 512))
             # visualEmbed = torch.reshape(visualEmbed, (B, T_a, 25, 512))
             # visualEmbed = torch.mean(visualEmbed, dim=2)
@@ -211,22 +219,25 @@ class talkNet(nn.Module):
                 # visualEmbed = self.model.forward_visual_frontend(visualFeature[0].to(self.device))
                 audioEmbed_reshaped = self.audio_feature_extractor(audioFeature_reshaped)
                 visualEmbed_reshaped = self.visual_feature_extractor(visualFeature_reshaped)
-                # audioEmbed_reshaped = self.audio_conv(audioEmbed_reshaped)
+                audioEmbed_reshaped = self.audio_conv(audioEmbed_reshaped)
                 visualEmbed_reshaped = self.visual_conv(visualEmbed_reshaped)
-                audioEmbed_lst = [self.audio_conv[i](audioEmbed_reshaped) for i in range(25)]
-                audioEmbed_reshaped = torch.cat(audioEmbed_lst, dim=-3)
-                audioEmbed_reshaped = self.audio_avg_pool(audioEmbed_reshaped)
+                #audioEmbed_lst = [self.audio_conv[i](audioEmbed_reshaped) for i in range(25)]
+                #audioEmbed_reshaped = torch.cat(audioEmbed_lst, dim=-3)
+                audioEmbed_reshaped_avg = self.audio_avg_pool(audioEmbed_reshaped)
                 visualEmbed_reshaped = self.visual_avg_pool(visualEmbed_reshaped)
-                audioEmbed_reshaped = self.audio_flatten(audioEmbed_reshaped)
+                audioEmbed_reshaped_flattened = self.audio_flatten(audioEmbed_reshaped_avg)
                 visualEmbed_reshaped = self.visual_flatten(visualEmbed_reshaped)
+                audioEmbed_reshaped = torch.transpose(torch.transpose(audioEmbed_reshaped, 1,3), 1, 2)
+                audioEmbed_reshaped = torch.reshape(audioEmbed_reshaped, (B*T_a, 24, 512))
+                audioEmbed_reshaped = torch.cat([audioEmbed_reshaped, audioEmbed_reshaped_flattened.unsqueeze(1)], dim=1)
                 #audioEmbed_reshaped = self.audio_projector(audioEmbed_reshaped)
                 #visualEmbed_reshaped = self.visual_projector(visualEmbed_reshaped)
                 # audioEmbed_reshaped = torch.repeat_interleave(audioEmbed_reshaped, 25, dim=0)
                 # audioEmbed = torch.reshape(audioEmbed_reshaped, (B, T_v, 512))
                 # visualEmbed = torch.reshape(visualEmbed_reshaped, (B, T_v, 512))
-                audioEmbed = torch.reshape(audioEmbed_reshaped, (B, T_a, 512*25))
-                audioEmbed = torch.reshape(audioEmbed_reshaped, (B, T_a, 25, 512))
                 audioEmbed = torch.reshape(audioEmbed_reshaped, (B, T_v, 512))
+                # audioEmbed = torch.reshape(audioEmbed_reshaped, (B, T_a, 25, 512))
+                # audioEmbed = torch.reshape(audioEmbed_reshaped, (B, T_v, 512))
                 visualEmbed = torch.reshape(visualEmbed_reshaped, (B, T_v, 512))
                 # visualEmbed = torch.reshape(visualEmbed, (B, T_a, 25, 512))
                 # visualEmbed = torch.mean(visualEmbed, dim=2)
