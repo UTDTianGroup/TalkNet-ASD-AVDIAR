@@ -9,6 +9,31 @@ from model.talkNetModel import talkNetModel
 from torchaudio.prototype.pipelines import VGGISH
 import torchvision
 
+class ConvBlock(nn.Module):
+    def __init__(self, in_channels, out_channels, kernel_size, last_block=False, stride=(1,1), padding=(1,1)):
+        super(ConvBlock, self).__init__()
+        self.last_block = last_block
+        self.conv1 = nn.Conv2d(in_channels=in_channels, out_channels=out_channels, kernel_size=kernel_size, stride=stride, padding=padding)
+        self.relu1 = nn.ReLU()
+        self.bn1 = nn.BatchNorm2d(num_features=out_channels)
+        self.conv2 = nn.Conv2d(in_channels=out_channels, out_channels=out_channels, kernel_size=kernel_size, stride=stride, padding=padding)
+        self.relu2 = nn.ReLU()
+        self.bn2 = nn.BatchNorm2d(num_features=out_channels)
+        self.conv3 = nn.Conv2d(in_channels=out_channels, out_channels=out_channels, kernel_size=kernel_size, stride=stride, padding=padding)
+        if not self.last_block:
+            self.relu3 = nn.ReLU()
+            self.bn3 = nn.BatchNorm2d(num_features=out_channels)
+
+    def forward(self, x):
+        x = self.bn1(self.relu1(self.conv1(x)))
+        x = self.bn2(self.relu2(self.conv2(x)))
+        x = self.conv3(x)
+        if self.last_block:
+            return x
+        else:
+            x = self.bn3(self.relu3(x))
+            return x
+
 class talkNet(nn.Module):
     def __init__(self, lr = 0.0001, lrDecay = 0.95, detector_arch=0, num_blocks_unfrozen=0, **kwargs):
         super(talkNet, self).__init__()
@@ -54,7 +79,7 @@ class talkNet(nn.Module):
         self.scheduler = torch.optim.lr_scheduler.StepLR(self.optim, step_size = 1, gamma=lrDecay)
 
         self.visual_avg_pool = nn.AvgPool2d((3,3))
-        self.audio_avg_pool = nn.AvgPool2d((6,4))
+        self.audio_avg_pool = nn.AvgPool2d((3,2))
         self.visual_avg_pool = self.visual_avg_pool.to(self.device)
         self.audio_avg_pool = self.audio_avg_pool.to(self.device)
 
@@ -71,6 +96,9 @@ class talkNet(nn.Module):
         encoder_layer = nn.TransformerEncoderLayer(d_model=256, nhead=8)
         self.transformer_encoder = nn.TransformerEncoder(encoder_layer=encoder_layer, num_layers=6)
         self.transformer_encoder = self.transformer_encoder.to(self.device)
+
+        self.audio_conv = nn.Sequential(ConvBlock(512, 512, 3),nn.MaxPool2d(2), ConvBlock(512,512,3), nn.AvgPool2d((3,2)))
+        self.visual_conv = ConvBlock(512, 512, 3)
         
         print(time.strftime("%m-%d %H:%M:%S") + " Model para number = %.2f"%(sum(param.numel() for param in self.model.parameters()) / 1024 / 1024))
 
@@ -102,6 +130,9 @@ class talkNet(nn.Module):
             visualEmbed_reshaped = self.visual_feature_extractor(visualFeature_reshaped)
             # print('audio embed reshaped shape: ', audioEmbed_reshaped.shape)
             # print('visual embed reshaped shape: ', visualEmbed_reshaped.shape)
+
+            audioEmbed_reshaped = self.audio_conv(audioFeature_reshaped)
+            visualEmbed_reshaped = self.visual_conv(visualFeature_reshaped)
 
             audioEmbed_reshaped = self.audio_avg_pool(audioEmbed_reshaped)
             visualEmbed_reshaped = self.visual_avg_pool(visualEmbed_reshaped)
