@@ -98,8 +98,8 @@ class talkNet(nn.Module):
         self.transformer_encoder = self.transformer_encoder.to(self.device)
 
         #self.audio_conv = [nn.Sequential(ConvBlock(512, 512, 3),nn.MaxPool2d(2), ConvBlock(512,512,3)) for i in range(25)]
-        self.audio_conv = ConvBlock(512,512,3)
-        self.visual_conv = ConvBlock(512, 512, 3)
+        self.audio_conv = ConvBlock(512,512,3, last_block=True)
+        self.visual_conv = ConvBlock(512, 512, 3, last_block=True)
         self.audio_conv = self.audio_conv.to(self.device)
         self.visual_conv = self.visual_conv.to(self.device)
         
