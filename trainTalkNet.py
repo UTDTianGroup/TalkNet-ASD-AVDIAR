@@ -29,6 +29,7 @@ def main():
     parser.add_argument('--finetune',      action='store_true', help="Finetune with TalkNet's pretrained weights.")
     parser.add_argument('--detector_arch', type=int, default=0, help='Choose the detector architecture. 0: default architecture. 1: Modified architecture.')
     parser.add_argument('--finetuned_model_path', type=str, default='Path not specified', help='Path to the saved model after finetuning')
+    parser.add_argument('--num_blocks_unfrozen', type=int, default=0, help='The number of convolution blocks unfrozen in the feature extractors for finetuning. Max value is 4 since the number of Conv Blocks in VGGish is 4.')
 
     args = parser.parse_args()
     # Data loader

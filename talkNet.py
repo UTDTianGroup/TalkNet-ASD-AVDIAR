@@ -6,9 +6,11 @@ import sys, time, numpy, os, subprocess, pandas, tqdm
 
 from loss import lossAV, lossA, lossV
 from model.talkNetModel import talkNetModel
+from torchaudio.prototype.pipelines import VGGISH
+import torchvision
 
 class talkNet(nn.Module):
-    def __init__(self, lr = 0.0001, lrDecay = 0.95, detector_arch=0, **kwargs):
+    def __init__(self, lr = 0.0001, lrDecay = 0.95, detector_arch=0, num_blocks_unfrozen=0, **kwargs):
         super(talkNet, self).__init__()
 
         if torch.cuda.is_available(): #Set device to either gpu or cpu based on the runtime environment. Prefer using CUDA/GPU when available.
@@ -17,6 +19,30 @@ class talkNet(nn.Module):
             self.device='cpu'        
         
         self.model = talkNetModel().to(self.device)
+        self.visual_block_layer_dict = {0:31, 1:24, 2:17, 3:10, 4:5, 5:0}
+        self.audio_block_layer_dict = {0:16, 1:11, 2:6, 3:3, 4:0}
+
+        self.num_blocks_unfrozen = num_blocks_unfrozen
+
+        vggish_model = VGGISH.get_model()
+        self.audio_feature_extractor = vggish_model.features_network
+        self.audio_feature_extractor = self.audio_feature_extractor.to(self.device)
+        vgg_model = torchvision.models.vgg16(pretrained=True)
+        self.visual_feature_extractor = vgg_model.features
+        self.visual_feature_extractor = self.visual_feature_extractor.to(self.device)
+
+        for name, param in self.visual_feature_extractor.named_parameters():
+            name_ind=int(name.split('.')[0])
+            if name_ind < self.visual_block_layer_dict[self.num_blocks_unfrozen]:
+                print('Freezing visual weights of layer: ', name_ind)
+                param.requires_grad=False
+
+        for name, param in self.audio_feature_extractor.named_parameters():
+            name_ind=int(name.split('.')[0])
+            if name_ind < self.audio_block_layer_dict[self.num_blocks_unfrozen]:
+                print('Freezing audio weights of layer: ', name_ind)
+                param.requires_grad=False
+
         self.lossAV = lossAV().to(self.device)
         self.lossA = lossA().to(self.device)
         self.lossV = lossV().to(self.device)
@@ -26,6 +52,15 @@ class talkNet(nn.Module):
             self.lossV.FC = nn.Sequential(nn.Linear(128, 64), nn.ReLU(), nn.LayerNorm(64), nn.Linear(64, 2))
         self.optim = torch.optim.Adam(self.parameters(), lr = lr)
         self.scheduler = torch.optim.lr_scheduler.StepLR(self.optim, step_size = 1, gamma=lrDecay)
+
+        self.visual_avg_pool = nn.AvgPool2d((3,3))
+        self.audio_avg_pool = nn.AvgPool2d((6,4))
+
+        self.visual_flatten = nn.Flatten()
+        self.audio_flatten = nn.Flatten()
+
+        self.visual_projector = nn.Sequential(nn.Linear(512, 256), nn.ReLU(), nn.Linear(256,128))
+        self.audio_projector = nn.Sequential(nn.Linear(512, 256), nn.ReLU(), nn.Linear(256,128))
         
         print(time.strftime("%m-%d %H:%M:%S") + " Model para number = %.2f"%(sum(param.numel() for param in self.model.parameters()) / 1024 / 1024))
 
@@ -36,9 +71,54 @@ class talkNet(nn.Module):
         lr = self.optim.param_groups[0]['lr']        
         for num, (audioFeature, visualFeature, labels) in enumerate(loader, start=1):
             self.zero_grad()
-            audioEmbed = self.model.forward_audio_frontend(audioFeature[0].to(self.device)) # feedForward
-            visualEmbed = self.model.forward_visual_frontend(visualFeature[0].to(self.device))
+            # print('audioFeature shape: ', audioFeature[0].shape)
+            # print('visualFeature shape: ', visualFeature[0].shape)
+            # print('labels shape: ', labels[0].reshape((-1)).shape)
+            audioFeature = audioFeature[0]
+            visualFeature = visualFeature[0]
+            B, T_a, d2_a, d3_a, d4_a = audioFeature.shape
+            _, T_v, c_v, h_v, w_w = visualFeature.shape
+            audioFeature_reshaped = torch.reshape(audioFeature, (B*T_a, d2_a, d3_a, d4_a))
+            visualFeature_reshaped = torch.reshape(visualFeature, (B*T_v, c_v, h_v, w_w))
+
+            audioFeature_reshaped = audioFeature_reshaped.to(self.device)
+            visualFeature_reshaped = visualFeature_reshaped.to(self.device)
+
+            # print('audio feature reshaped shape: ', audioFeature_reshaped.shape)
+            # print('visual feature reshaped shape: ', visualFeature_reshaped.shape)
+            # audioEmbed = self.model.forward_audio_frontend(audioFeature[0].to(self.device)) # feedForward
+            # visualEmbed = self.model.forward_visual_frontend(visualFeature[0].to(self.device))
+            audioEmbed_reshaped = self.audio_feature_extractor(audioFeature_reshaped)
+            visualEmbed_reshaped = self.visual_feature_extractor(visualFeature_reshaped)
+            # print('audio embed reshaped shape: ', audioEmbed_reshaped.shape)
+            # print('visual embed reshaped shape: ', visualEmbed_reshaped.shape)
+
+            audioEmbed_reshaped = self.audio_avg_pool(audioEmbed_reshaped)
+            visualEmbed_reshaped = self.visual_avg_pool(visualEmbed_reshaped)
+            # print('audio embed reshaped shape after avg pool : ', audioEmbed_reshaped.shape)
+            # print('visual embed reshaped shape after avg pool: ', visualEmbed_reshaped.shape)
+
+            audioEmbed_reshaped = self.audio_flatten(audioEmbed_reshaped)
+            visualEmbed_reshaped = self.visual_flatten(visualEmbed_reshaped)
+            # print('audio embed reshaped shape after flatten : ', audioEmbed_reshaped.shape)
+            # print('visual embed reshaped shape after flatten: ', visualEmbed_reshaped.shape)
+
+            audioEmbed_reshaped = self.audio_projector(audioEmbed_reshaped)
+            visualEmbed_reshaped = self.visual_projector(visualEmbed_reshaped)
+            # print('audio embed reshaped shape after projection : ', audioEmbed_reshaped.shape)
+            # print('visual embed reshaped shape after projection: ', visualEmbed_reshaped.shape)
+
+            audioEmbed_reshaped = torch.repeat_interleave(audioEmbed_reshaped, 25, dim=0)
+            # print('audio embed reshaped shape after repeat : ', audioEmbed_reshaped.shape)
+
+            audioEmbed = torch.reshape(audioEmbed_reshaped, (B, T_v, 128))
+            visualEmbed = torch.reshape(visualEmbed_reshaped, (B, T_v, 128))
+
+            # print('audio embed shape: ', audioEmbed.shape)
+            # print('visual embed shape: ', visualEmbed.shape)
+
             audioEmbed, visualEmbed = self.model.forward_cross_attention(audioEmbed, visualEmbed)
+            
             outsAV= self.model.forward_audio_visual_backend(audioEmbed, visualEmbed)  
             outsA = self.model.forward_audio_backend(audioEmbed)
             outsV = self.model.forward_visual_backend(visualEmbed)
@@ -64,8 +144,28 @@ class talkNet(nn.Module):
         predScores = []
         for audioFeature, visualFeature, labels in tqdm.tqdm(loader):
             with torch.no_grad():                
-                audioEmbed  = self.model.forward_audio_frontend(audioFeature[0].to(self.device))
-                visualEmbed = self.model.forward_visual_frontend(visualFeature[0].to(self.device))
+                audioFeature = audioFeature[0]
+                visualFeature = visualFeature[0]
+                B, T_a, d2_a, d3_a, d4_a = audioFeature.shape
+                _, T_v, c_v, h_v, w_w = visualFeature.shape
+                audioFeature_reshaped = torch.reshape(audioFeature, (B*T_a, d2_a, d3_a, d4_a))
+                visualFeature_reshaped = torch.reshape(visualFeature, (B*T_v, c_v, h_v, w_w))
+
+                audioFeature_reshaped = audioFeature_reshaped.to(self.device)
+                visualFeature_reshaped = visualFeature_reshaped.to(self.device)
+                # audioEmbed  = self.model.forward_audio_frontend(audioFeature[0].to(self.device))
+                # visualEmbed = self.model.forward_visual_frontend(visualFeature[0].to(self.device))
+                audioEmbed_reshaped = self.audio_feature_extractor(audioFeature_reshaped)
+                visualEmbed_reshaped = self.visual_feature_extractor(visualFeature_reshaped)
+                audioEmbed_reshaped = self.audio_avg_pool(audioEmbed_reshaped)
+                visualEmbed_reshaped = self.visual_avg_pool(visualEmbed_reshaped)
+                audioEmbed_reshaped = self.audio_flatten(audioEmbed_reshaped)
+                visualEmbed_reshaped = self.visual_flatten(visualEmbed_reshaped)
+                audioEmbed_reshaped = self.audio_projector(audioEmbed_reshaped)
+                visualEmbed_reshaped = self.visual_projector(visualEmbed_reshaped)
+                audioEmbed_reshaped = torch.repeat_interleave(audioEmbed_reshaped, 25, dim=0)
+                audioEmbed = torch.reshape(audioEmbed_reshaped, (B, T_v, 128))
+                visualEmbed = torch.reshape(visualEmbed_reshaped, (B, T_v, 128))
                 audioEmbed, visualEmbed = self.model.forward_cross_attention(audioEmbed, visualEmbed)
                 outsAV= self.model.forward_audio_visual_backend(audioEmbed, visualEmbed)  
                 labels = labels[0].reshape((-1)).to(self.device)             
