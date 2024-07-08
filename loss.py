@@ -6,7 +6,7 @@ class lossAV(nn.Module):
 	def __init__(self):
 		super(lossAV, self).__init__()
 		self.criterion = nn.CrossEntropyLoss()
-		self.FC        = nn.Linear(1024,2)
+		self.FC        = nn.Linear(256,2)
 		
 	def forward(self, x, labels=None):	
 		x = x.squeeze(1)
@@ -29,7 +29,7 @@ class lossA(nn.Module):
 	def __init__(self):
 		super(lossA, self).__init__()
 		self.criterion = nn.CrossEntropyLoss()
-		self.FC        = nn.Linear(512, 2)
+		self.FC        = nn.Linear(128, 2)
 
 	def forward(self, x, labels):	
 		x = x.squeeze(1)
@@ -43,7 +43,7 @@ class lossV(nn.Module):
 		super(lossV, self).__init__()
 
 		self.criterion = nn.CrossEntropyLoss()
-		self.FC        = nn.Linear(512, 2)
+		self.FC        = nn.Linear(128, 2)
 
 	def forward(self, x, labels):	
 		x = x.squeeze(1)

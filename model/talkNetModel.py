@@ -20,11 +20,11 @@ class talkNetModel(nn.Module):
         self.audioEncoder  = audioEncoder(layers = [3, 4, 6, 3],  num_filters = [16, 32, 64, 128])
         
         # Audio-visual Cross Attention
-        self.crossA2V = attentionLayer(d_model = 512, nhead = 8)
-        self.crossV2A = attentionLayer(d_model = 512, nhead = 8)
+        self.crossA2V = attentionLayer(d_model = 128, nhead = 8)
+        self.crossV2A = attentionLayer(d_model = 128, nhead = 8)
 
         # Audio-visual Self Attention
-        self.selfAV = attentionLayer(d_model = 1024, nhead = 8)
+        self.selfAV = attentionLayer(d_model = 256, nhead = 8)
 
     def forward_visual_frontend(self, x):
         B, T, W, H = x.shape  
@@ -51,14 +51,14 @@ class talkNetModel(nn.Module):
     def forward_audio_visual_backend(self, x1, x2): 
         x = torch.cat((x1,x2), 2)    
         x = self.selfAV(src = x, tar = x)       
-        x = torch.reshape(x, (-1, 1024))
+        x = torch.reshape(x, (-1, 256))
         return x    
 
     def forward_audio_backend(self,x):
-        x = torch.reshape(x, (-1, 512))
+        x = torch.reshape(x, (-1, 128))
         return x
 
     def forward_visual_backend(self,x):
-        x = torch.reshape(x, (-1, 512))
+        x = torch.reshape(x, (-1, 128))
         return x
 
