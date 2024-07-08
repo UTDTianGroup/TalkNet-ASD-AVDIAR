@@ -118,11 +118,14 @@ class talkNet(nn.Module):
             # print('audio embed reshaped shape after projection : ', audioEmbed_reshaped.shape)
             # print('visual embed reshaped shape after projection: ', visualEmbed_reshaped.shape)
 
-            audioEmbed_reshaped = torch.repeat_interleave(audioEmbed_reshaped, 25, dim=0)
+            # audioEmbed_reshaped = torch.repeat_interleave(audioEmbed_reshaped, 25, dim=0)
             # print('audio embed reshaped shape after repeat : ', audioEmbed_reshaped.shape)
 
-            audioEmbed = torch.reshape(audioEmbed_reshaped, (B, T_v, 512))
+            audioEmbed = torch.reshape(audioEmbed_reshaped, (B, T_a, 512))
             visualEmbed = torch.reshape(visualEmbed_reshaped, (B, T_v, 512))
+            visualEmbed = torch.reshape(visualEmbed, (B, T_a, 25, 512))
+            visualEmbed = torch.mean(visualEmbed, dim=2)
+
 
             # print('audio embed shape: ', audioEmbed.shape)
             # print('visual embed shape: ', visualEmbed.shape)
@@ -177,9 +180,13 @@ class talkNet(nn.Module):
                 visualEmbed_reshaped = self.visual_flatten(visualEmbed_reshaped)
                 #audioEmbed_reshaped = self.audio_projector(audioEmbed_reshaped)
                 #visualEmbed_reshaped = self.visual_projector(visualEmbed_reshaped)
-                audioEmbed_reshaped = torch.repeat_interleave(audioEmbed_reshaped, 25, dim=0)
-                audioEmbed = torch.reshape(audioEmbed_reshaped, (B, T_v, 512))
+                # audioEmbed_reshaped = torch.repeat_interleave(audioEmbed_reshaped, 25, dim=0)
+                # audioEmbed = torch.reshape(audioEmbed_reshaped, (B, T_v, 512))
+                # visualEmbed = torch.reshape(visualEmbed_reshaped, (B, T_v, 512))
+                audioEmbed = torch.reshape(audioEmbed_reshaped, (B, T_a, 512))
                 visualEmbed = torch.reshape(visualEmbed_reshaped, (B, T_v, 512))
+                visualEmbed = torch.reshape(visualEmbed, (B, T_a, 25, 512))
+                visualEmbed = torch.mean(visualEmbed, dim=2)
                 # audioEmbed, visualEmbed = self.model.forward_cross_attention(audioEmbed, visualEmbed)
                 # avembed = torch.cat([audioEmbed, visualEmbed], dim=2)
                 # transformer_out = self.transformer_encoder(avembed)
