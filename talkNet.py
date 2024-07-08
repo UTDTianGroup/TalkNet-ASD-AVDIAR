@@ -99,6 +99,8 @@ class talkNet(nn.Module):
 
         self.audio_conv = nn.Sequential(ConvBlock(512, 512, 3),nn.MaxPool2d(2), ConvBlock(512,512,3))
         self.visual_conv = ConvBlock(512, 512, 3)
+        self.audio_conv = self.audio_conv.to(self.device)
+        self.visual_conv = self.visual_conv.to(self.device)
         
         print(time.strftime("%m-%d %H:%M:%S") + " Model para number = %.2f"%(sum(param.numel() for param in self.model.parameters()) / 1024 / 1024))
 
