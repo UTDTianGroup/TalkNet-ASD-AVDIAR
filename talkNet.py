@@ -103,9 +103,9 @@ class talkNet(nn.Module):
         self.audio_conv = self.audio_conv.to(self.device)
         self.visual_conv = self.visual_conv.to(self.device)
 
-        self.audio_fc_lst = [nn.Sequential(nn.Linear(512*24,1024), nn.ReLU(), nn.Linear(1024,128)) for i in range(25)]
+        self.audio_fc_lst = [nn.Sequential(nn.Linear(512*24,1024), nn.ReLU(), nn.BatchNorm1d(1024), nn.Linear(1024,128)) for i in range(25)]
         self.audio_fc_lst = [audio_fc.to(self.device) for audio_fc in self.audio_fc_lst]
-        self.visual_fc = nn.Sequential(nn.Linear(512*9,512), nn.ReLU(), nn.Linear(512,128))
+        self.visual_fc = nn.Sequential(nn.Linear(512*9,512), nn.ReLU(), nn.BatchNorm1d(512), nn.Linear(512,128))
         self.visual_fc = self.visual_fc.to(self.device)
         
         print(time.strftime("%m-%d %H:%M:%S") + " Model para number = %.2f"%(sum(param.numel() for param in self.model.parameters()) / 1024 / 1024))
