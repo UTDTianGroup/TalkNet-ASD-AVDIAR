@@ -97,7 +97,7 @@ class talkNet(nn.Module):
         self.transformer_encoder = nn.TransformerEncoder(encoder_layer=encoder_layer, num_layers=6)
         self.transformer_encoder = self.transformer_encoder.to(self.device)
 
-        self.audio_conv = nn.Sequential(ConvBlock(512, 512, 3),nn.MaxPool2d(2), ConvBlock(512,512,3), nn.AvgPool2d((3,2)))
+        self.audio_conv = nn.Sequential(ConvBlock(512, 512, 3),nn.MaxPool2d(2), ConvBlock(512,512,3))
         self.visual_conv = ConvBlock(512, 512, 3)
         
         print(time.strftime("%m-%d %H:%M:%S") + " Model para number = %.2f"%(sum(param.numel() for param in self.model.parameters()) / 1024 / 1024))
