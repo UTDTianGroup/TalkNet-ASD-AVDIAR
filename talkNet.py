@@ -207,6 +207,8 @@ class talkNet(nn.Module):
                 # visualEmbed = self.model.forward_visual_frontend(visualFeature[0].to(self.device))
                 audioEmbed_reshaped = self.audio_feature_extractor(audioFeature_reshaped)
                 visualEmbed_reshaped = self.visual_feature_extractor(visualFeature_reshaped)
+                audioEmbed_reshaped = self.audio_conv(audioEmbed_reshaped)
+                visualEmbed_reshaped = self.visual_conv(visualEmbed_reshaped)
                 audioEmbed_reshaped = self.audio_avg_pool(audioEmbed_reshaped)
                 visualEmbed_reshaped = self.visual_avg_pool(visualEmbed_reshaped)
                 audioEmbed_reshaped = self.audio_flatten(audioEmbed_reshaped)
