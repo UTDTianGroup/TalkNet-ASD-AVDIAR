@@ -75,8 +75,7 @@ class talkNet(nn.Module):
             self.lossAV.FC = nn.Sequential(nn.Linear(256, 128), nn.ReLU(), nn.LayerNorm(128), nn.Linear(128, 64), nn.ReLU(), nn.LayerNorm(64), nn.Linear(64, 2))
             self.lossA.FC = nn.Sequential(nn.Linear(128, 64), nn.ReLU(), nn.LayerNorm(64), nn.Linear(64, 2))
             self.lossV.FC = nn.Sequential(nn.Linear(128, 64), nn.ReLU(), nn.LayerNorm(64), nn.Linear(64, 2))
-        self.optim = torch.optim.Adam(self.parameters(), lr = lr)
-        self.scheduler = torch.optim.lr_scheduler.StepLR(self.optim, step_size = 1, gamma=lrDecay)
+        
 
         self.visual_avg_pool = nn.AvgPool2d((3,3))
         self.audio_avg_pool = nn.AvgPool2d((6,4))
@@ -109,6 +108,8 @@ class talkNet(nn.Module):
         self.visual_fc = self.visual_fc.to(self.device)
         
         print(time.strftime("%m-%d %H:%M:%S") + " Model para number = %.2f"%(sum(param.numel() for param in self.model.parameters()) / 1024 / 1024))
+        self.optim = torch.optim.Adam(self.parameters(), lr = lr)
+        self.scheduler = torch.optim.lr_scheduler.StepLR(self.optim, step_size = 1, gamma=lrDecay)
 
     def train_network(self, loader, epoch, **kwargs):
         self.train()
