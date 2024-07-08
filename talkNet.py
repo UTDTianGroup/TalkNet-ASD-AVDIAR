@@ -131,8 +131,8 @@ class talkNet(nn.Module):
             # print('audio embed reshaped shape: ', audioEmbed_reshaped.shape)
             # print('visual embed reshaped shape: ', visualEmbed_reshaped.shape)
 
-            audioEmbed_reshaped = self.audio_conv(audioFeature_reshaped)
-            visualEmbed_reshaped = self.visual_conv(visualFeature_reshaped)
+            audioEmbed_reshaped = self.audio_conv(audioEmbed_reshaped)
+            visualEmbed_reshaped = self.visual_conv(visualEmbed_reshaped)
 
             audioEmbed_reshaped = self.audio_avg_pool(audioEmbed_reshaped)
             visualEmbed_reshaped = self.visual_avg_pool(visualEmbed_reshaped)
