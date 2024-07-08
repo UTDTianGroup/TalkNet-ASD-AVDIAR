@@ -55,12 +55,18 @@ class talkNet(nn.Module):
 
         self.visual_avg_pool = nn.AvgPool2d((3,3))
         self.audio_avg_pool = nn.AvgPool2d((6,4))
+        self.visual_avg_pool = self.visual_avg_pool.to(self.device)
+        self.audio_avg_pool = self.audio_avg_pool.to(self.device)
 
         self.visual_flatten = nn.Flatten()
         self.audio_flatten = nn.Flatten()
+        self.visual_flatten = self.visual_flatten.to(self.device)
+        self.audio_flatten = self.audio_flatten.to(self.device)
 
         self.visual_projector = nn.Sequential(nn.Linear(512, 256), nn.ReLU(), nn.Linear(256,128))
         self.audio_projector = nn.Sequential(nn.Linear(512, 256), nn.ReLU(), nn.Linear(256,128))
+        self.visual_projector = self.visual_projector.to(self.device)
+        self.audio_projector = self.audio_projector.to(self.device)
         
         print(time.strftime("%m-%d %H:%M:%S") + " Model para number = %.2f"%(sum(param.numel() for param in self.model.parameters()) / 1024 / 1024))
 

@@ -30,7 +30,7 @@ def overlap(dataName, audio, audioSet):
     snr = random.uniform(-5, 5)
     if len(noiseAudio) < len(audio):
         shortage = len(audio) - len(noiseAudio)
-        noiseAudio = torch.nn.functional.pad(noiseAudio, (0, shortage), mode='circular')
+        noiseAudio = torch.nn.functional.pad(noiseAudio, (0, shortage), mode='constant', value=0)
     else:
         noiseAudio = noiseAudio[:len(audio)]
     noiseDB = 10 * torch.log10(torch.mean(abs(noiseAudio ** 2)) + 1e-4)
