@@ -61,7 +61,7 @@ def main():
         s = talkNet(**vars(args))
         s.loadParameters('pretrain_AVA.model', map_location=torch.device(s.device))
         print("Model %s loaded from previous state!"%('pretrain_AVA.model'))
-        epoch = 14
+        epoch = 1
 
     if args.finetune_mode=='ft_det':
         for name, param in s.named_parameters():
