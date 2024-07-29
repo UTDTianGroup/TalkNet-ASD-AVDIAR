@@ -58,6 +58,7 @@ class talkNet(nn.Module):
     def evaluate_network(self, loader, evalCsvSave, evalOrig, **kwargs):
         self.eval()
         predScores = []
+        predLabels = []
         for audioFeature, visualFeature, labels in tqdm.tqdm(loader):
             with torch.no_grad():                
                 audioEmbed  = self.model.forward_audio_frontend(audioFeature[0].to(self.device))
@@ -65,18 +66,28 @@ class talkNet(nn.Module):
                 audioEmbed, visualEmbed = self.model.forward_cross_attention(audioEmbed, visualEmbed)
                 outsAV= self.model.forward_audio_visual_backend(audioEmbed, visualEmbed)  
                 labels = labels[0].reshape((-1)).to(self.device)             
-                _, predScore, _, _ = self.lossAV.forward(outsAV, labels)    
+                _, predScore, predLabel, _ = self.lossAV.forward(outsAV, labels)    
                 predScore = predScore[:,1].detach().cpu().numpy()
+                predLabel = predLabel.detach().cpu().numpy().astype(int)
                 predScores.extend(predScore)
+                predLabels.extend(predLabel)
         evalLines = open(evalOrig).read().splitlines()[1:]
         labels = []
-        labels = pandas.Series( ['SPEAKING_AUDIBLE' for line in evalLines])
+        #labels = pandas.Series( ['SPEAKING_AUDIBLE' for line in evalLines])
+        label_ids = pandas.Series(predLabels)
+        for predLabel in predLabels:
+            if predLabel == 1:
+                labels.append('SPEAKING_AUDIBLE')
+            else:
+                labels.append('NOT_SPEAKING')
+        labels = pandas.Series(labels)
         scores = pandas.Series(predScores)
         evalRes = pandas.read_csv(evalOrig)
         evalRes['score'] = scores
         evalRes['label'] = labels
-        evalRes.drop(['label_id'], axis=1,inplace=True)
-        evalRes.drop(['instance_id'], axis=1,inplace=True)
+        evalRes['label_id'] = label_ids
+        # evalRes.drop(['label_id'], axis=1,inplace=True)
+        # evalRes.drop(['instance_id'], axis=1,inplace=True)
         evalRes.to_csv(evalCsvSave, index=False)
         cmd = "python -O utils/get_ava_active_speaker_performance.py -g %s -p %s "%(evalOrig, evalCsvSave)
         print('evaluation command: ', cmd)

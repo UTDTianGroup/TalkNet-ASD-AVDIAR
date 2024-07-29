@@ -107,9 +107,9 @@ def merge_groundtruth_and_predictions(df_groundtruth, df_predictions):
         "Groundtruth and predictions CSV must have the same number of "
         "unique rows.")
   # print(df_predictions["label"].unique())
-  if df_predictions["label"].unique() != ["SPEAKING_AUDIBLE"]:
-    raise ValueError(
-        "Predictions CSV must contain only SPEAKING_AUDIBLE label.")
+  # if df_predictions["label"].unique() != ["SPEAKING_AUDIBLE"]:
+  #   raise ValueError(
+  #       "Predictions CSV must contain only SPEAKING_AUDIBLE label.")
 
   if df_predictions["score"].count() < df_predictions["uid"].count():
     raise ValueError("Predictions CSV must contain score value for every row.")

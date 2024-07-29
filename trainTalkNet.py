@@ -25,6 +25,7 @@ def main():
     parser.add_argument('--downloadAVA',     dest='downloadAVA', action='store_true', help='Only download AVA dataset and do related preprocess')
     parser.add_argument('--evaluation',      dest='evaluation', action='store_true', help='Only do evaluation by using pretrained model [pretrain_AVA.model]')
     parser.add_argument('--use_avdiar',      action='store_true', help='Train/test with avdiar data.')
+    parser.add_argument('--eval_model_path', type=str, default='pretrain_AVA.model', help='Path to the model to be evaluated.')
 
     args = parser.parse_args()
     # Data loader
@@ -49,8 +50,8 @@ def main():
     if args.evaluation == True:
         download_pretrain_model_AVA()
         s = talkNet(**vars(args))
-        s.loadParameters('pretrain_AVA.model', map_location=torch.device(s.device))
-        print("Model %s loaded from previous state!"%('pretrain_AVA.model'))
+        s.loadParameters(args.eval_model_path, map_location=torch.device(s.device))
+        print("Model %s loaded from previous state!"%(args.eval_model_path))
         mAP = s.evaluate_network(loader = valLoader, **vars(args))
         print("mAP %2.2f%%"%(mAP))
         quit()
