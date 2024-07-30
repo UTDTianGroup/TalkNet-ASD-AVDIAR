@@ -72,15 +72,15 @@ class talkNet(nn.Module):
                 predScores.extend(predScore)
                 predLabels.extend(predLabel)
         evalLines = open(evalOrig).read().splitlines()[1:]
-        labels = []
-        #labels = pandas.Series( ['SPEAKING_AUDIBLE' for line in evalLines])
+        # labels = []
+        labels = pandas.Series( ['SPEAKING_AUDIBLE' for line in evalLines])
         label_ids = pandas.Series(predLabels)
-        for predLabel in predLabels:
-            if predLabel == 1:
-                labels.append('SPEAKING_AUDIBLE')
-            else:
-                labels.append('NOT_SPEAKING')
-        labels = pandas.Series(labels)
+        # for predLabel in predLabels:
+        #     if predLabel == 1:
+        #         labels.append('SPEAKING_AUDIBLE')
+        #     else:
+        #         labels.append('NOT_SPEAKING')
+        # labels = pandas.Series(labels)
         scores = pandas.Series(predScores)
         evalRes = pandas.read_csv(evalOrig)
         evalRes['score'] = scores
